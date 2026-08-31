@@ -6,6 +6,67 @@
 [![Known Vulnerabilities](https://snyk.io/test/github/commercetools/commercetools-sync-java/4b2e26113d591bda158217c5dc1cf80a88665646/badge.svg)](https://snyk.io/test/github/commercetools/commercetools-sync-java/4b2e26113d591bda158217c5dc1cf80a88665646)
 
 
+---
+
+## Fork status: JDK 17 + SDK 20 / Jackson 3 migration
+
+> This section describes the state of **this fork's** `chore/bump-ct-sdk-20.1.0` branch. It is not
+> part of the upstream project and should be dropped from any pull request opened against
+> [commercetools/commercetools-sync-java](https://github.com/commercetools/commercetools-sync-java).
+
+The branch raises the JDK baseline to 17 and moves to `commercetools-sdk-java-v2` 20.1.0, which
+replaced Jackson 2 with Jackson 3. It is split into three commits so each can be reviewed — and
+accepted or rejected — on its own:
+
+| Commit | Change |
+|--------|--------|
+| `build: raise minimum JDK baseline to 17` | `source`/`targetCompatibility`, CI + CD workflows, prerequisites in the docs. Verified against the *unchanged* SDK 19.3.0, so the JDK move is isolated from the SDK move. |
+| `build: bump commercetools JVM SDK v2 to 20.1.0 and migrate to Jackson 3` | 86 files moved from `com.fasterxml.jackson` to `tools.jackson`, plus the renamed/retyped APIs that came with it. |
+| `feat(cartdiscounts): support the recurringOrderScope field` | Native sync support for the field SDK 20 added to `CartDiscount`. |
+
+### Verified
+
+- `./gradlew compileJava compileTestJava compileIntegrationTestJava compileBenchmarkJava`
+- `./gradlew test` — 2114 unit tests, 0 failures
+- `./gradlew spotlessCheck pmd* spotbugs*`
+
+### Outstanding
+
+- **Integration tests have never been run on this branch.** They require two disposable CTP
+  projects (they wipe both) with `en`/`de`/`fr` languages and `EUR`/`USD` currencies configured.
+  This is the largest gap: the SDK 20 / Jackson 3 change touches serialization paths that the unit
+  tests mock out. See [CONTRIBUTING](/docs/CONTRIBUTING.md#integration-tests) for the setup.
+- **No upstream issue exists yet.** `docs/CONTRIBUTING.md` requires every PR to reference one, and
+  both breaking changes below are the maintainers' call, not a reviewer detail. Open the issue
+  before the PR.
+- **No release notes entry.** `docs/RELEASE_NOTES.md` needs a section for the release that carries
+  these changes; `docs/BUILD.md` makes that part of the release flow.
+- **No consumer migration note.** Nothing yet tells users that `JsonNode` and friends in the public
+  API (`CustomValueConverter`, `AttributeUtils`, `ProductBatchValidator`) are now Jackson 3 types.
+  Where that goes — release notes, `docs/MIGRATION_GUIDE.md`, or both — depends on how upstream
+  wants to version the change.
+
+### Known breaking changes for consumers
+
+1. **JDK 11–16 are no longer supported.** The SDK requires Java 17 from 20.0.0 onwards, so the
+   library cannot follow the SDK and keep a Java 11 target.
+2. **Jackson 3 types leak through the public API.** Consumers passing or receiving `JsonNode` must
+   migrate to `tools.jackson` themselves.
+
+### Deliberately not changed
+
+- **Deprecated `ByProjectKeyCustomObjectsGet`.** The deprecation predates this branch (it is already
+  deprecated in 19.x), and the SDK offers no replacement for what the code does: both call sites
+  query custom objects *across* containers, while the non-deprecated path
+  (`customObjects().withContainer(c).get()`) needs a container that is not known at that point —
+  `ProductTransformUtils` carries an upstream comment saying exactly this. Migrating would mean one
+  request per container, a behaviour and performance change that does not belong in a version bump.
+- **Jackson is not declared explicitly in `build.gradle`.** It arrives transitively through the
+  `api`-scoped SDK dependency, exactly as Jackson 2 did before. Declaring it would pin the version
+  and document the public-API exposure, but it changes nothing functionally, so it is left to match
+  the existing style.
+
+
 > Note: The current version of this library uses [JVM-SDK-V2](http://commercetools.github.io/commercetools-sdk-java-v2). This doc already contains updated information. Please migrate to this version, using our [Migration Guide](/docs/MIGRATION_GUIDE.md). The support for JVM SDK v1 has been discontinued with [commercetools-sync-java v9.2.3](https://github.com/commercetools/commercetools-sync-java/tree/9.2.3)
 > If migration isn't an option for you, you can still use deprecated versions of this library available at [Maven central](https://central.sonatype.com/artifact/com.commercetools/commercetools-sync-java/9.2.3).
 
