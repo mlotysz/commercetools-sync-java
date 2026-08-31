@@ -16,6 +16,7 @@ import com.commercetools.api.models.cart_discount.CartDiscountChangeTargetAction
 import com.commercetools.api.models.cart_discount.CartDiscountChangeValueActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountDraft;
 import com.commercetools.api.models.cart_discount.CartDiscountSetDescriptionActionBuilder;
+import com.commercetools.api.models.cart_discount.CartDiscountSetRecurringOrderScopeActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetValidFromActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetValidFromAndUntilActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetValidUntilActionBuilder;
@@ -29,8 +30,21 @@ import com.commercetools.api.models.cart_discount.CartDiscountValueGiftLineItemD
 import com.commercetools.api.models.cart_discount.CartDiscountValueRelative;
 import com.commercetools.api.models.cart_discount.CartDiscountValueRelativeDraft;
 import com.commercetools.api.models.cart_discount.StackingMode;
+import com.commercetools.api.models.recurrence_policy.RecurrencePolicyReference;
+import com.commercetools.api.models.recurrence_policy.RecurrencePolicyResourceIdentifier;
+import com.commercetools.api.models.recurring_order.ApplicableRecurrencePolicies;
+import com.commercetools.api.models.recurring_order.ApplicableRecurrencePoliciesDraft;
+import com.commercetools.api.models.recurring_order.RecurringOrderScope;
+import com.commercetools.api.models.recurring_order.RecurringOrderScopeDraft;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public final class CartDiscountUpdateActionUtils {
 
@@ -492,6 +506,83 @@ public final class CartDiscountUpdateActionUtils {
         oldCartDiscount.getStackingMode(),
         stackingMode,
         () -> CartDiscountChangeStackingModeActionBuilder.of().stackingMode(stackingMode).build());
+  }
+
+  /**
+   * Compares the {@link RecurringOrderScope} recurring order scopes of a {@link CartDiscount} and a
+   * {@link CartDiscountDraft} and returns an {@link CartDiscountUpdateAction} as a result in an
+   * {@link java.util.Optional}. If both the {@link CartDiscount} and the {@link CartDiscountDraft}
+   * have the same recurring order scope, then no update action is needed and hence an empty {@link
+   * java.util.Optional} is returned.
+   *
+   * <p>Note: A {@code null} {@code recurringOrderScope} value in the {@link CartDiscountDraft} is
+   * treated as "not set by the source" and never unsets the value on the {@link CartDiscount},
+   * because CTP always resolves the field to a scope on the resource.
+   *
+   * <p>Note: {@link ApplicableRecurrencePolicies} scopes are compared by the ids of the referenced
+   * recurrence policies, so the draft's resource identifiers are expected to be resolved to ids
+   * beforehand. Order of the referenced recurrence policies is not significant.
+   *
+   * @param oldCartDiscount the cart discount which should be updated.
+   * @param newCartDiscount the cart discount draft where we get the new recurring order scope.
+   * @return A filled optional with the update action or an empty optional if the recurring order
+   *     scopes are identical.
+   */
+  @Nonnull
+  public static Optional<CartDiscountUpdateAction> buildSetRecurringOrderScopeUpdateAction(
+      @Nonnull final CartDiscount oldCartDiscount,
+      @Nonnull final CartDiscountDraft newCartDiscount) {
+
+    final RecurringOrderScope oldScope = oldCartDiscount.getRecurringOrderScope();
+    final RecurringOrderScopeDraft newScope = newCartDiscount.getRecurringOrderScope();
+
+    if (newScope == null) {
+      return empty();
+    }
+
+    if (oldScope == null || !Objects.equals(oldScope.getType(), newScope.getType())) {
+      return Optional.of(buildSetRecurringOrderScopeAction(newScope));
+    }
+
+    if (oldScope instanceof ApplicableRecurrencePolicies
+        && newScope instanceof ApplicableRecurrencePoliciesDraft) {
+      return buildActionIfDifferentRecurrencePolicies(
+          (ApplicableRecurrencePolicies) oldScope, (ApplicableRecurrencePoliciesDraft) newScope);
+    }
+
+    return empty();
+  }
+
+  @Nonnull
+  private static Optional<CartDiscountUpdateAction> buildActionIfDifferentRecurrencePolicies(
+      @Nonnull final ApplicableRecurrencePolicies oldScope,
+      @Nonnull final ApplicableRecurrencePoliciesDraft newScope) {
+
+    final Set<String> oldPolicyIds =
+        toIdSet(oldScope.getRecurrencePolicies(), RecurrencePolicyReference::getId);
+    final Set<String> newPolicyIds =
+        toIdSet(newScope.getRecurrencePolicies(), RecurrencePolicyResourceIdentifier::getId);
+
+    return oldPolicyIds.equals(newPolicyIds)
+        ? empty()
+        : Optional.of(buildSetRecurringOrderScopeAction(newScope));
+  }
+
+  @Nonnull
+  private static <T> Set<String> toIdSet(
+      @Nullable final List<T> references, @Nonnull final Function<T, String> idMapper) {
+    return ofNullable(references).orElseGet(Collections::emptyList).stream()
+        .map(idMapper)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+  }
+
+  @Nonnull
+  private static CartDiscountUpdateAction buildSetRecurringOrderScopeAction(
+      @Nonnull final RecurringOrderScopeDraft newScope) {
+    return CartDiscountSetRecurringOrderScopeActionBuilder.of()
+        .recurringOrderScope(newScope)
+        .build();
   }
 
   private CartDiscountUpdateActionUtils() {}

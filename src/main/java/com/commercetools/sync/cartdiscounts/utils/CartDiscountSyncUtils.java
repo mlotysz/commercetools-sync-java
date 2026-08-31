@@ -59,6 +59,8 @@ public final class CartDiscountSyncUtils {
             CartDiscountUpdateActionUtils.buildSetValidDatesUpdateAction(
                 oldCartDiscount, newCartDiscount),
             CartDiscountUpdateActionUtils.buildChangeStackingModeUpdateAction(
+                oldCartDiscount, newCartDiscount),
+            CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
                 oldCartDiscount, newCartDiscount));
 
     final List<CartDiscountUpdateAction> cartDiscountCustomUpdateActions =

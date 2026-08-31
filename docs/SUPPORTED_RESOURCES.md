@@ -15,7 +15,7 @@ This document lists all resource types supported by **commercetools-sync-java** 
 | [ProductTypes](#producttypes) | 12 | Medium |
 | [Types](#types) | 8 | Low |
 | [InventoryEntries](#inventoryentries) | 6 | Low |
-| [CartDiscounts](#cartdiscounts) | 12 | Medium |
+| [CartDiscounts](#cartdiscounts) | 13 | Medium |
 | [States](#states) | 6 | Low |
 | [TaxCategories](#taxcategories) | 3 | Low |
 | [CustomObjects](#customobjects) | 3 | Low |
@@ -185,6 +185,7 @@ Sync class: `CartDiscountSync`
 | `validFrom` | `setValidFrom` | ZonedDateTime; when both `validFrom` and `validUntil` change, `setValidFromAndUntil` is used instead |
 | `validUntil` | `setValidUntil` | ZonedDateTime; see `validFrom` note above |
 | `stackingMode` | `changeStackingMode` | Defaults to `Stacking` |
+| `recurringOrderScope` | `setRecurringOrderScope` | Compared by scope type; `applicableRecurrencePolicies` scopes are compared by the ids of the referenced recurrence policies. A `null` value in the draft never unsets the scope |
 | `custom` | `setCustomType` / `setCustomField` | Custom fields |
 
 ---

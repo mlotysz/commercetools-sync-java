@@ -19,6 +19,7 @@ import com.commercetools.api.models.cart_discount.CartDiscountCustomLineItemsTar
 import com.commercetools.api.models.cart_discount.CartDiscountDraft;
 import com.commercetools.api.models.cart_discount.CartDiscountLineItemsTargetBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetDescriptionActionBuilder;
+import com.commercetools.api.models.cart_discount.CartDiscountSetRecurringOrderScopeActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetValidFromActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetValidFromAndUntilActionBuilder;
 import com.commercetools.api.models.cart_discount.CartDiscountSetValidUntilActionBuilder;
@@ -50,7 +51,18 @@ import com.commercetools.api.models.common.DefaultCurrencyUnits;
 import com.commercetools.api.models.common.LocalizedString;
 import com.commercetools.api.models.product.ProductReferenceBuilder;
 import com.commercetools.api.models.product.ProductResourceIdentifierBuilder;
+import com.commercetools.api.models.recurrence_policy.RecurrencePolicyReferenceBuilder;
+import com.commercetools.api.models.recurrence_policy.RecurrencePolicyResourceIdentifierBuilder;
+import com.commercetools.api.models.recurring_order.AnyOrderBuilder;
+import com.commercetools.api.models.recurring_order.AnyOrderDraft;
+import com.commercetools.api.models.recurring_order.AnyOrderDraftBuilder;
+import com.commercetools.api.models.recurring_order.ApplicableRecurrencePoliciesBuilder;
+import com.commercetools.api.models.recurring_order.ApplicableRecurrencePoliciesDraft;
+import com.commercetools.api.models.recurring_order.ApplicableRecurrencePoliciesDraftBuilder;
+import com.commercetools.api.models.recurring_order.RecurringOrdersOnlyDraft;
+import com.commercetools.api.models.recurring_order.RecurringOrdersOnlyDraftBuilder;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -2089,5 +2101,136 @@ class CartDiscountUpdateActionUtilsTest {
             oldCartDiscount, newCartDiscountDraft);
 
     assertThat(setValidUntilUpdateAction).isNotPresent();
+  }
+
+  @Test
+  void buildSetRecurringOrderScopeUpdateAction_WithDifferentScopeTypes_ShouldBuildUpdateAction() {
+    final CartDiscount oldCartDiscount = mock(CartDiscount.class);
+    when(oldCartDiscount.getRecurringOrderScope()).thenReturn(AnyOrderBuilder.of().build());
+
+    final CartDiscountDraft newCartDiscountDraft = mock(CartDiscountDraft.class);
+    final RecurringOrdersOnlyDraft newScope = RecurringOrdersOnlyDraftBuilder.of().build();
+    when(newCartDiscountDraft.getRecurringOrderScope()).thenReturn(newScope);
+
+    final Optional<CartDiscountUpdateAction> result =
+        CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
+            oldCartDiscount, newCartDiscountDraft);
+
+    assertThat(result)
+        .contains(
+            CartDiscountSetRecurringOrderScopeActionBuilder.of()
+                .recurringOrderScope(newScope)
+                .build());
+  }
+
+  @Test
+  void buildSetRecurringOrderScopeUpdateAction_WithSameScopeTypes_ShouldNotBuildUpdateAction() {
+    final CartDiscount oldCartDiscount = mock(CartDiscount.class);
+    when(oldCartDiscount.getRecurringOrderScope()).thenReturn(AnyOrderBuilder.of().build());
+
+    final CartDiscountDraft newCartDiscountDraft = mock(CartDiscountDraft.class);
+    when(newCartDiscountDraft.getRecurringOrderScope())
+        .thenReturn(AnyOrderDraftBuilder.of().build());
+
+    final Optional<CartDiscountUpdateAction> result =
+        CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
+            oldCartDiscount, newCartDiscountDraft);
+
+    assertThat(result).isNotPresent();
+  }
+
+  @Test
+  void buildSetRecurringOrderScopeUpdateAction_WithNullNewScope_ShouldNotBuildUpdateAction() {
+    final CartDiscount oldCartDiscount = mock(CartDiscount.class);
+    when(oldCartDiscount.getRecurringOrderScope()).thenReturn(AnyOrderBuilder.of().build());
+
+    final CartDiscountDraft newCartDiscountDraft = mock(CartDiscountDraft.class);
+    when(newCartDiscountDraft.getRecurringOrderScope()).thenReturn(null);
+
+    final Optional<CartDiscountUpdateAction> result =
+        CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
+            oldCartDiscount, newCartDiscountDraft);
+
+    assertThat(result).isNotPresent();
+  }
+
+  @Test
+  void buildSetRecurringOrderScopeUpdateAction_WithNullOldScope_ShouldBuildUpdateAction() {
+    final CartDiscount oldCartDiscount = mock(CartDiscount.class);
+    when(oldCartDiscount.getRecurringOrderScope()).thenReturn(null);
+
+    final CartDiscountDraft newCartDiscountDraft = mock(CartDiscountDraft.class);
+    final AnyOrderDraft newScope = AnyOrderDraftBuilder.of().build();
+    when(newCartDiscountDraft.getRecurringOrderScope()).thenReturn(newScope);
+
+    final Optional<CartDiscountUpdateAction> result =
+        CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
+            oldCartDiscount, newCartDiscountDraft);
+
+    assertThat(result)
+        .contains(
+            CartDiscountSetRecurringOrderScopeActionBuilder.of()
+                .recurringOrderScope(newScope)
+                .build());
+  }
+
+  @Test
+  void
+      buildSetRecurringOrderScopeUpdateAction_WithDifferentRecurrencePolicies_ShouldBuildUpdateAction() {
+    final CartDiscount oldCartDiscount = mock(CartDiscount.class);
+    when(oldCartDiscount.getRecurringOrderScope())
+        .thenReturn(
+            ApplicableRecurrencePoliciesBuilder.of()
+                .recurrencePolicies(
+                    List.of(RecurrencePolicyReferenceBuilder.of().id("policy-1").build()))
+                .build());
+
+    final CartDiscountDraft newCartDiscountDraft = mock(CartDiscountDraft.class);
+    final ApplicableRecurrencePoliciesDraft newScope =
+        ApplicableRecurrencePoliciesDraftBuilder.of()
+            .recurrencePolicies(
+                List.of(RecurrencePolicyResourceIdentifierBuilder.of().id("policy-2").build()))
+            .build();
+    when(newCartDiscountDraft.getRecurringOrderScope()).thenReturn(newScope);
+
+    final Optional<CartDiscountUpdateAction> result =
+        CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
+            oldCartDiscount, newCartDiscountDraft);
+
+    assertThat(result)
+        .contains(
+            CartDiscountSetRecurringOrderScopeActionBuilder.of()
+                .recurringOrderScope(newScope)
+                .build());
+  }
+
+  @Test
+  void
+      buildSetRecurringOrderScopeUpdateAction_WithSameRecurrencePoliciesInDifferentOrder_ShouldNotBuildUpdateAction() {
+    final CartDiscount oldCartDiscount = mock(CartDiscount.class);
+    when(oldCartDiscount.getRecurringOrderScope())
+        .thenReturn(
+            ApplicableRecurrencePoliciesBuilder.of()
+                .recurrencePolicies(
+                    List.of(
+                        RecurrencePolicyReferenceBuilder.of().id("policy-1").build(),
+                        RecurrencePolicyReferenceBuilder.of().id("policy-2").build()))
+                .build());
+
+    final CartDiscountDraft newCartDiscountDraft = mock(CartDiscountDraft.class);
+    when(newCartDiscountDraft.getRecurringOrderScope())
+        .thenReturn(
+            ApplicableRecurrencePoliciesDraftBuilder.of()
+                .recurrencePolicies(
+                    List.of(
+                        RecurrencePolicyResourceIdentifierBuilder.of().id("policy-2").build(),
+                        RecurrencePolicyResourceIdentifierBuilder.of().id("policy-1").build()))
+                .build());
+
+    final Optional<CartDiscountUpdateAction> result =
+        CartDiscountUpdateActionUtils.buildSetRecurringOrderScopeUpdateAction(
+            oldCartDiscount, newCartDiscountDraft);
+
+    assertThat(result).isNotPresent();
   }
 }
